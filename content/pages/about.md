@@ -1,7 +1,7 @@
-Title: About Page
+Title: about
 Date: 2024-07-02
 Slug: about
-Author: Your Name
+Author: Jack
 Status: published
 
 This will be turned into :abbr:`HTML (HyperText Markup Language)`.

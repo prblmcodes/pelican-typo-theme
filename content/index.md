@@ -1,9 +1,17 @@
 Title: Index Page
 Date: 2024-07-02
-Slug: about
-Author: Your Name
+Slug: home
+Author: Jonah
 Status: published
 
-This will be turned into :abbr:`HTML (HyperText Markup Language)`.
+I am an Italian Software Engineer with a strong foundation in computer science and a passion for solving complex problems. I am interested in a various topics, including algorithms, distributed systems, databases, and information retrieval.
+Feel free to read about myself or to look at my posts.
 
-This is the content of my super blog post.
+I am an Italian Software Engineer with a strong foundation in computer science and a passion for solving complex problems. I am interested in a various topics, including algorithms, distributed systems, databases, and information retrieval.
+Feel free to read about myself or to look at my posts.
+
+I am an Italian Software Engineer with a strong foundation in computer science and a passion for solving complex problems. I am interested in a various topics, including algorithms, distributed systems, databases, and information retrieval.
+Feel free to read about myself or to look at my posts.
+
+I am an Italian Software Engineer with a strong foundation in computer science and a passion for solving complex problems. I am interested in a various topics, including algorithms, distributed systems, databases, and information retrieval.
+Feel free to read about myself or to look at my posts.

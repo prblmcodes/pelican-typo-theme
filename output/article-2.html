@@ -48,18 +48,18 @@
             <a
               href="/pages/about.html"
             >
-              /About Page
+              /about
             </a>
           </p>
 
-          <p class="small ">
-            <a href="/category/category.html" >
-              category
+          <p class="small  bold ">
+            <a href="/category/article.html"  aria-current="page" >
+              /article
             </a>
           </p>
-          <p class="small  bold ">
-            <a href="/category/misc.html"  aria-current="page" >
-              misc
+          <p class="small ">
+            <a href="/category/misc.html" >
+              /misc
             </a>
           </p>
     </div>
@@ -67,24 +67,242 @@
 </div>
       <main>
   <article>
-    <header>
-      <h2>
-        <a href="/article-2.html" rel="bookmark"
-           title="Permalink to The second article">The second article</a></h2>
-      
-    </header>
-    <p>See below intra-site link examples in Markdown format.</p>
-<p><a href="/article-1.html">a link relative to the current file</a>
-<a href="/article-1.html">a link relative to the content root</a></p>
+    <h2>
+      <a
+        href="/article-2.html" rel="bookmark"
+        title="Permalink to The second article"
+      >
+        The second article
+      </a>
+    </h2>
+
+
+    
+
+    <p>I studied LSM trees at university and after encountering them twice in Designing Data-Intensive Applications and Database Internals I decided to implement something in Java.</p>
+<p>The idea behind this project is not to provide the most efficient implementation ever, but to experiment with storing data on disk, any suggestions are welcome!</p>
+<p>Here’s the Github repo if you want to have a look, this article is also published on Medium.</p>
+<p>Introduction 
+An LSM tree is a structure used by NoSQL databases, such as Cassandra, RocksDB, LevelDB, Dynamo, and so on. It’s suitable for write-intensive applications.</p>
+<p>We can distinguish two key components of the tree, the in-memory buffer, also called Memtable, and the disk-resident tables. The main idea is to accept writes to the in-memory part of the tree, and to flush them periodically, or when a certain size is met.</p>
+<p>A key aspect of this structure is ordering, indeed, keys are sorted both in RAM and on disk, enabling logarithmic searches.</p>
+<p>For the sake of this project elements in the tree are simple key-value pairs.</p>
+<p>Memtable 
+Having sorted elements in memory is not a new problem we can exploit any efficient order-preserving data structure for this part, such as Red-Black or AVL trees.</p>
+<p>In this particular implementation, I decided to build a Skip List, which provides the same theoretical complexity in the average case of balanced trees, but is straightforward to implement. 1</p>
+<p>A Skip List is a multi-leveled linked list. The idea is to have fast lanes between nodes, and, by carefully constructing them, we can reduce the number of links we need to traverse while searching.</p>
+<p>skiplist
+The list properties are:</p>
+<p>elements at level zero are sorted;
+the number of levels are 
+log
+⁡
+(
+n
+)
+log(n), where 
+n
+n is the size of the list;
+if a node is at level 
+i
+i, then is must also be at level 
+i
+−
+1
+i−1.
+Searching 
+Given the above properties, searching is done as follows:</p>
+<p>start at the highest level and traverse until the node key is less than the wanted key;
+if the successor surpasses the wanted key, go down a level and repeat, else we found the element. Eventually, we’ll reach level zero, and determine if the element is found or not.
+Inserting 
+Insertion proceeds as follows:</p>
+<p>locate the insert position with the same logic as before;
+determine a level for the new element;
+insert as in a linked list, but at each required level. Note that for this to work we need to keep track of a predecessor buffer while descending levels. This way we can correctly replace successors pointers at each level.
+public void add(ByteArrayPair item) {</p>
+<div class="highlight"><pre><span></span><code><span class="o">//</span><span class="w"> </span><span class="n">Locate</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="k">element</span><span class="w"> </span><span class="n">keeping</span><span class="w"> </span><span class="n">track</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">predecessors</span><span class="w"> </span><span class="k">at</span><span class="w"> </span><span class="k">each</span><span class="w"> </span><span class="k">level</span>
+<span class="n">Node</span><span class="w"> </span><span class="k">current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sentinel</span><span class="p">;</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="nc">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">levels</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">--</span><span class="p">)</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="k">current</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">current</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">.</span><span class="n">val</span><span class="p">.</span><span class="n">compareTo</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="k">current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">current</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">;</span>
+<span class="w">    </span><span class="n">buffer</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">current</span><span class="p">;</span><span class="w"> </span>
+<span class="err">}</span>
+
+<span class="o">//</span><span class="w"> </span><span class="nf">Replace</span><span class="w"> </span><span class="k">current</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">possible</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">current</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">0</span><span class="o">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">current</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">0</span><span class="o">]</span><span class="p">.</span><span class="n">val</span><span class="p">.</span><span class="n">compareTo</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="k">current</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">0</span><span class="o">]</span><span class="p">.</span><span class="n">val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">item</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="err">}</span>
+
+<span class="o">//</span><span class="w"> </span><span class="k">Insert</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="k">at</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">random</span><span class="w"> </span><span class="k">level</span><span class="p">,</span><span class="w"> </span><span class="n">updating</span><span class="w"> </span><span class="n">predecessors</span>
+<span class="n">Node</span><span class="w"> </span><span class="n">newNode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Node</span><span class="p">(</span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="n">levels</span><span class="p">);</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="nc">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">randomLevel</span><span class="p">();</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="n">newNode</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buffer</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">;</span>
+<span class="w">    </span><span class="n">buffer</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">.</span><span class="k">next</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">newNode</span><span class="p">;</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<p>}
+Choosing a level 
+To determine a level, we can toss a coin and keep going until we get heads. This would require a lot of random generations, a faster way is to generate a single number and use its binary representation as boolean values.</p>
+<p>private int randomLevel() {
+    int level = 1;
+    long n = rn.nextLong();
+    while (level &lt; levels &amp;&amp; (n &amp; (1L &lt;&lt; level)) != 0)
+        level++;
+    return level;
+}
+SSTable 
+A Sorted String Table is a disk-based structure for sorted immutable data. They consist of two main files, one with actual data and another with an index to speed up look-ups.</p>
+<p>Indexing and Look-Ups 
+Given the data file, searching for a key can be implemented with a full scan. This is tremendously slow on big files, hence we rely on indexing to skip portions of data.</p>
+<p>Given a sampling factor 
+k
+k, we build a sparse index with keys at position 
+0
+,
+k
+,
+2
+k
+0,k,2k, and so on. By storing the index in an array we can rely on binary search to find a given offset in the data file, where we can start a linear scan. This permits us to skip a lot of unnecessary comparisons and locate a file portion that likely stores our value.</p>
+<p>sstable
+Note that we can stop the search as soon as the current element surpasses the wanted one. Below is the code for searching, this implementation is as lazy as possible, meaning that we only read what’s strictly necessary while iterating on the input stream.</p>
+<p>public byte[] get(byte[] key) {</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="ss">(</span><span class="nv">compare</span><span class="ss">(</span><span class="nv">key</span>,<span class="w"> </span><span class="nv">minKey</span><span class="ss">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="o">-</span><span class="mi">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">compare</span><span class="ss">(</span><span class="nv">key</span>,<span class="w"> </span><span class="nv">maxKey</span><span class="ss">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="ss">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nv">null</span><span class="c1">;</span>
+
+<span class="o">//</span><span class="w"> </span><span class="nv">binary</span><span class="w"> </span><span class="nv">search</span><span class="w"> </span><span class="nv">an</span><span class="w"> </span><span class="nv">offset</span><span class="w"> </span><span class="nv">to</span><span class="w"> </span><span class="nv">start</span><span class="w"> </span><span class="nv">search</span>
+<span class="nv">long</span><span class="w"> </span><span class="nv">offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">getCandidateOffsetIndex</span><span class="ss">(</span><span class="nv">key</span><span class="ss">)</span><span class="c1">;</span>
+<span class="nv">int</span><span class="w"> </span><span class="nv">remaining</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">size</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">sparseSizeCount</span>.<span class="nv">getInt</span><span class="ss">(</span><span class="nv">offsetIndex</span><span class="ss">)</span><span class="c1">;</span>
+
+<span class="o">//</span><span class="w"> </span><span class="nv">move</span><span class="w"> </span><span class="nv">input</span><span class="w"> </span><span class="nv">stream</span><span class="w"> </span><span class="nv">to</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">offset</span><span class="w"> </span><span class="nv">given</span><span class="w"> </span><span class="nv">by</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">index</span>
+<span class="nv">is</span>.<span class="nv">seek</span><span class="ss">(</span><span class="nv">offset</span><span class="ss">)</span><span class="c1">;</span>
+
+<span class="nv">int</span><span class="w"> </span><span class="nv">cmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="c1">;</span>
+<span class="nv">int</span><span class="w"> </span><span class="nv">searchKeyLen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">key</span>.<span class="nv">length</span>,<span class="w"> </span><span class="nv">readKeyLen</span>,<span class="w"> </span><span class="nv">readValueLen</span><span class="c1">;</span>
+
+<span class="nv">byte</span>[]<span class="w"> </span><span class="nv">readKey</span><span class="c1">;</span>
+<span class="k">while</span><span class="w"> </span><span class="ss">(</span><span class="nv">cmp</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">remaining</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="ss">)</span><span class="w"> </span>{
+
+<span class="w">    </span><span class="nv">remaining</span><span class="o">--</span><span class="c1">;</span>
+<span class="w">    </span><span class="nv">readKeyLen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">is</span>.<span class="nv">readVByteInt</span><span class="ss">()</span><span class="c1">;</span>
+
+<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="nv">gone</span><span class="w"> </span><span class="nv">too</span><span class="w"> </span><span class="nv">far</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="ss">(</span><span class="nv">readKeyLen</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="nv">searchKeyLen</span><span class="ss">)</span><span class="w"> </span>{
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nv">null</span><span class="c1">;</span>
+<span class="w">    </span>}
+
+<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="nv">gone</span><span class="w"> </span><span class="nv">too</span><span class="w"> </span><span class="nv">short</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="ss">(</span><span class="nv">readKeyLen</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nv">searchKeyLen</span><span class="ss">)</span><span class="w"> </span>{
+<span class="w">        </span><span class="nv">readValueLen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">is</span>.<span class="nv">readVByteInt</span><span class="ss">()</span><span class="c1">;</span>
+<span class="w">        </span><span class="nv">is</span>.<span class="nv">skip</span><span class="ss">(</span><span class="nv">readKeyLen</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">readValueLen</span><span class="ss">)</span><span class="c1">;</span>
+<span class="w">        </span><span class="k">continue</span><span class="c1">;</span>
+<span class="w">    </span>}
+
+<span class="w">    </span><span class="o">//</span><span class="w"> </span><span class="nv">read</span><span class="w"> </span><span class="nv">full</span><span class="w"> </span><span class="nv">key</span>,<span class="w"> </span><span class="nv">compare</span>,<span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">equal</span><span class="w"> </span><span class="nv">read</span><span class="w"> </span><span class="nv">value</span>
+<span class="w">    </span><span class="nv">readValueLen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">is</span>.<span class="nv">readVByteInt</span><span class="ss">()</span><span class="c1">;</span>
+<span class="w">    </span><span class="nv">readKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">is</span>.<span class="nv">readNBytes</span><span class="ss">(</span><span class="nv">readKeyLen</span><span class="ss">)</span><span class="c1">;</span>
+<span class="w">    </span><span class="nv">cmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">compare</span><span class="ss">(</span><span class="nv">key</span>,<span class="w"> </span><span class="nv">readKey</span><span class="ss">)</span><span class="c1">;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="ss">(</span><span class="nv">cmp</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="ss">)</span><span class="w"> </span>{
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nv">is</span>.<span class="nv">readNBytes</span><span class="ss">(</span><span class="nv">readValueLen</span><span class="ss">)</span><span class="c1">;</span>
+<span class="w">    </span>}<span class="w"> </span><span class="k">else</span><span class="w"> </span>{
+<span class="w">        </span><span class="nv">is</span>.<span class="nv">skip</span><span class="ss">(</span><span class="nv">readValueLen</span><span class="ss">)</span><span class="c1">;</span>
+<span class="w">    </span>}
+}
+
+<span class="k">return</span><span class="w"> </span><span class="nv">null</span><span class="c1">;</span>
+</code></pre></div>
+
+<p>}
+Bloom Filters 
+What happens when we search for a key that’s not on disk? We waste a lot of precious CPU cycles on binary searching and seeking on an offset, and iterating until we surpass the wanted key.</p>
+<p>To avoid unnecessary operations we can rely on a compact and probabilistic structure such as Bloom Filters. The idea is to have a structure that answers membership queries, having some false positive answers, but no false negatives. We can tune the structure for our particular needs, by specifying a false-positive rate.</p>
+<p>So, while looking for a key, we first test for probabilistic membership, and if the answer is negative, we can early return null from the search.</p>
+<p>public byte[] get(byte[] key) {
+    if (!bloomFilter.mightContain(key))
+        return null;
+    ...
+}
+Data layout 
+Data is disk-resident, hence we need to define a binary format to follow, with minimal overhead. An SSTable is made of 
+n
+n elements, where each one of them has a variable length key and value.</p>
+<p>Key and value pairs are byte arrays, and to lay them out on disk we encode their length 
+l
+l, followed by 
+l
+l bytes. Each integer is written in variable byte encoding, to not waste 32 bits on small numbers. 2</p>
+<p>This encoding uses a byte to store a continuation bit and a 7-bit payload containing part of the represented number. For instance, consider the number 
+456
+456 and its binary representation 
+111001000
+111001000, the variable byte encoded version is:</p>
+<p>∣
+1
+∣
+0000011
+∣
+0
+∣
+1001000
+∣
+∣1∣0000011∣0∣1001000∣</p>
+<p>The first byte begins with one, hence that the number is not finished, while the second block starts with zero, indicating no more bytes are needed to decode the current integer.</p>
+<p>The index file is a list of keys, so we can use the same length plus payload encoding for it. Each index entry has an offset related to it, specifying the number of bytes to skip in the file to reach it. Those offsets are increasing, so we can use something like delta-encoding to store them. Below is an example of such encoding:
+0
+,
+25
+,
+76
+,
+…
+0,25,76,…
+↓
+↓
+0
+,
+(
+25
+−
+0
+)
+,
+(
+76
+−
+25
+)
+,
+…
+0,(25−0),(76−25),…
+Resulting integers are smaller, thus encoded in fewer bytes.</p>
+<p>Finally, Bloom Filters are represented by some hyperparameters and a bit vector, that we can encode as is.</p>
+<p>Putting it all together 
+We saw how to construct an SStable and how a Skip List works in memory, It is time to combine the two to obtain the final engine.</p>
+<p>The main components of the tree are:</p>
+<p>in-memory mutable buffer or Memtable: a skip list as presented in the previous paragraphs, with a max size;
+in-memory immutable buffers: a list of skip lists containing memtables that need to be flushed to disk;
+disk-resident tables: a collection of SSTables obtained from memtables flushing, they are divided into levels, level zero containing the most recent data.
+tree
+We are going to first see how primitives are defined, and then give an overview of how the tree is maintained, with buffer flushing and table compaction.</p>
+<p>Insertion and Search 
+To insert a new element we simply add it to the in-memory buffer. If the list does not exceed the maximum size we are done, otherwise the current list is scheduled for disk flushing, and the mutable buffer is re-initialized.</p>
+<p>Searching is a bit trickier, and has at most three steps:</p>
+<p>query the mutable buffer;
+query all the immutable buffers scheduled for flushing;
+query all the disk tables starting from level zero and on.
+If, at any point, the wanted key is found, we can stop the search.</p>
     <footer>
       <p>Published: <time datetime="2012-12-01T10:02:00+01:00">
         Sat 01 December 2012
       </time></p>
         <address>
-          By             <a href="/author/prblm.html">prblm</a>
+          By             <a href="/author/mike.html">Mike</a>
         </address>
         <p>
-          Category: <a href="/category/misc.html">misc</a>
+          Category: <a href="/category/article.html">article</a>
         </p>
     </footer>
   </article>

@@ -15,7 +15,7 @@
       {% for title, link in MENUITEMS %}
         <p class="small">
           <a href="{{ link }}">
-            {{ title }}
+            /{{ title }}
           </a>
         </p>
       {% endfor %}
@@ -37,7 +37,7 @@
         {% for cat, null in categories %}
           <p class="small {% if cat==category %} bold {% endif %}">
             <a href="{{ SITEURL }}/{{ cat.url }}" {% if cat==category %} aria-current="page" {% endif %}>
-              {{ cat}}
+              /{{ cat}}
             </a>
           </p>
         {% endfor %}

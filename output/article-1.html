@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
   
-      <title>typo - Article 1</title>
+      <title>typo - The First article</title>
 
 <meta charset="utf-8" />
 <meta name="generator" content="Pelican" />
@@ -48,18 +48,18 @@
             <a
               href="/pages/about.html"
             >
-              /About Page
+              /about
             </a>
           </p>
 
           <p class="small  bold ">
-            <a href="/category/category.html"  aria-current="page" >
-              category
+            <a href="/category/article.html"  aria-current="page" >
+              /article
             </a>
           </p>
           <p class="small ">
             <a href="/category/misc.html" >
-              misc
+              /misc
             </a>
           </p>
     </div>
@@ -67,26 +67,366 @@
 </div>
       <main>
   <article>
-    <header>
-      <h2>
-        <a href="/article-1.html" rel="bookmark"
-           title="Permalink to Article 1">Article 1</a></h2>
-      
-    </header>
-    <p>This will be turned into :abbr:<code>HTML (HyperText Markup Language)</code>.</p>
-<p>This is the content of my super blog post.</p>
-<p>See below intra-site link examples in reStructuredText format.</p>
-<p><code>a link relative to the current file &lt;{filename}../article2.md&gt;</code><em>
-<code>a link relative to the content root &lt;{filename}/article2.md&gt;</code></em></p>
+    <h2>
+      <a
+        href="/article-1.html" rel="bookmark"
+        title="Permalink to The First article"
+      >
+        The First article
+      </a>
+    </h2>
+
+
+    
+
+    <p>I’ve been in the process of coding a web crawler in Rust and faced a problem with keeping an in-memory to-visit queue. The idea is to have a collection of nodes to visit, which discards duplicates, with minimal memory overhead.</p>
+<p>The Problem 
+A problem like this could be solved by using a simple set. Before inserting a new element, we check for membership into the visited set and discard duplicates.</p>
+<p>In the following examples, rust is used, and elements are Strings, coming from crawled web pages.</p>
+<p>pub struct Sieve {
+    filter: HashSet<String>,
+    urls: VecDeque<String>,
+}</p>
+<p>impl Sieve {
+    pub fn new() -&gt; Sieve {
+        Sieve {
+            filter: HashSet::new(),
+            urls: VecDeque::new(),
+        }
+    }</p>
+<div class="highlight"><pre><span></span><code><span class="nt">pub</span><span class="w"> </span><span class="nt">fn</span><span class="w"> </span><span class="nt">push</span><span class="o">(&amp;</span><span class="nt">mut</span><span class="w"> </span><span class="nt">self</span><span class="o">,</span><span class="w"> </span><span class="nt">url</span><span class="o">:</span><span class="w"> </span><span class="nt">String</span><span class="o">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="err">if</span><span class="w"> </span><span class="err">self.filter.contains(&amp;url)</span><span class="w"> </span><span class="err">{</span>
+<span class="w">        </span><span class="err">return</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nt">self</span><span class="p">.</span><span class="nc">filter</span><span class="p">.</span><span class="nc">insert</span><span class="o">(</span><span class="nt">url</span><span class="p">.</span><span class="nc">clone</span><span class="o">());</span>
+<span class="w">    </span><span class="nt">self</span><span class="p">.</span><span class="nc">urls</span><span class="p">.</span><span class="nc">push_back</span><span class="o">(</span><span class="nt">url</span><span class="o">);</span>
+<span class="err">}</span>
+
+<span class="nt">pub</span><span class="w"> </span><span class="nt">fn</span><span class="w"> </span><span class="nt">pop</span><span class="o">(&amp;</span><span class="nt">mut</span><span class="w"> </span><span class="nt">self</span><span class="o">)</span><span class="w"> </span><span class="nt">-</span><span class="o">&gt;</span><span class="w"> </span><span class="nt">Option</span><span class="o">&lt;</span><span class="nt">String</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="err">self.urls.pop_front()</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>}
+This should be fine right? The answer is yes if the elements you add to it are limited, otherwise, the memory consumption of the set grows indefinitely.</p>
+<p>We can do better by relying on the same ideas but with a different Set implementation.</p>
+<p>Bloom Filters 
+A Bloom Filters is a space-efficient probabilistic data structure. It can be used to answer membership queries with one caveat, it makes errors with a certain probability.</p>
+<p>The Algorithm 
+An Bloom Filter is composed by two elements:</p>
+<p>A bit array of 
+m
+m bits, initially set to zero;
+d
+d hash functions, where 
+d
+d is a small constant.
+Adding an element</p>
+<p>To add a new element, we feed it to the 
+d
+d hash functions, obtaining 
+d
+d indexes in the range 
+[
+0
+,
+m
+−
+1
+]
+[0,m−1], used to set these positions to one in the bit array.</p>
+<p>Checking for membership</p>
+<p>As for insertion, we compute 
+d
+d hash values, and then check if all those bits are set to one in the bit array.</p>
+<p>Dealing with False Positives 
+A Filter is constructed with two parameters in mind: the number of expected insertions, and the wanted false-positive rate. Those two quantities determine the required number of bits and hash functions in the structure.</p>
+<p>Given 
+n
+n the number of wanted elements, and 
+ϵ
+ϵ the wanted false positive rate, the following holds:
+m
+=
+−
+n
+∗
+ln
+⁡
+(
+p
+)
+ln
+⁡
+(
+2
+)
+2
+m=− 
+ln(2) 
+2</p>
+<p>n∗ln(p)
+​</p>
+<p>The number of hash functions can be computed as:
+d
+=
+−
+ln
+⁡
+(
+p
+)
+ln
+⁡
+(
+2
+)
+d=− 
+ln(2)
+ln(p)
+​</p>
+<p>As those relations hold, we can balance the tradeoffs between speed, as more hash functions mean more bits to set and false-positive rate.</p>
+<p>Practical Hash Computation 
+We do not want to compute an excessive number of hash functions, as they can be quite costly. An easy way to reduce the required number of hash computations is to compute two hash values and combine them like so:</p>
+<p>h
+i
+=
+h
+1
++
+h
+2
+∗
+i
+h 
+i
+​
+ =h 
+1
+​
+ +h 
+2
+​
+ ∗i</p>
+<p>To compute two different hash values we can hash an element once and split the hash bits in two.</p>
+<p>Implementation 
+Here is a practical implementation of the Bloom Filter. To represent a bit array we use a vector of 128 bit numbers where each bit is considered as a different position.</p>
+<p>pub struct Filter {
+    size: usize,
+    d: u32,
+    bits: Vec<u128>,
+    set_bits: u32,
+}
+Construction</p>
+<p>Given the expected number of insertions and false-positive rate, we compute the optimal number of bits to use.</p>
+<p>pub fn new(n: usize, p: f64) -&gt; Filter {
+    let log_2 = 2_f64.ln();
+    let log_p = p.ln();</p>
+<div class="highlight"><pre><span></span><code>let size = ((-(n as f64) <span class="gs">* log_p) / (log_2 *</span> log_2)) as usize;
+let d = (-log_p / log_2).ceil() as u32;
+let bits = vec![0; (size as f64 / 128.0).ceil() as usize];
+let set_bits = 0;
+
+Filter {
+    size,
+    d,
+    bits,
+    set_bits,
+}
+</code></pre></div>
+
+<p>}
+Insertion</p>
+<p>We compute 
+d
+d hash values and use them to set the corresponding bits in the bit array.</p>
+<p>pub fn add(&amp;mut self, data: &amp;[u8]) {
+    let (h1, h2) = Self::hash(data);</p>
+<div class="highlight"><pre><span></span><code>for i in 0..self.d {
+    let bit = (h1 as u128 + h2 as u128 * i as u128) as usize % self.size;
+    self.bits[bit / 128] |= 1 &lt;&lt; (bit % 128);
+}
+</code></pre></div>
+
+<p>}
+Membership Queries</p>
+<p>We compute 
+d
+d hash values and use them to check that the bits are all set.</p>
+<p>pub fn contains(&amp;mut self, data: &amp;[u8]) -&gt; bool {
+    let (h1, h2) = Self::hash(data);</p>
+<div class="highlight"><pre><span></span><code>for i in 0..self.d {
+    let bit = (h1 as u128 + h2 as u128 * i as u128) as usize % self.size;
+    if self.bits[bit / 128] &amp; (1 &lt;&lt; (bit % 128)) == 0 {
+        return false;
+    }
+}
+true
+</code></pre></div>
+
+<p>}
+Estimating size</p>
+<p>Size can be estimated with a simple formula:</p>
+<h1>s</h1>
+<p>−
+m
+d
+ln
+⁡
+[
+1
+−
+X
+m
+]
+s=− 
+d
+m
+​
+ ln[1− 
+m
+X
+​
+ ]</p>
+<p>Where 
+X
+X is the number of bits set to one.</p>
+<p>pub fn estimated_size(&amp;self) -&gt; usize {
+    (-(self.size as f64 / self.d as f64)
+        * (1f64 - self.set_bits as f64 / self.size as f64).ln()) as usize
+}
+We hence need a new value, set_bits, which can be updated on each insertion. Here is the tweaked add function.</p>
+<p>pub fn add(&amp;mut self, data: &amp;[u8]) {
+    ...
+    // subtract old number of set bits in this block
+    self.set_bits -= self.bits[bit / 128].count_ones();
+    // set bit to one
+    self.bits[bit / 128] |= 1 &lt;&lt; (bit % 128);
+    // add new number of set bits in this block
+    self.set_bits += self.bits[bit / 128].count_ones();  <br>
+    ...
+}
+Full Implementation</p>
+<p>Wrapping everything up, here is the complete Bloom Filter implementation.</p>
+<p>pub struct Filter {
+    size: usize,
+    d: u32,
+    bits: Vec<u128>,
+    set_bits: u32,
+}</p>
+<p>impl Default for Filter {
+    fn default() -&gt; Self {
+        Self::new(1_000_000, 0.01)
+    }
+}</p>
+<p>impl Filter {
+    pub fn new(n: usize, p: f64) -&gt; Filter {
+        let log_2 = 2_f64.ln();
+        let log_p = p.ln();</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="k">size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="o">-</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">f64</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">log_p</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="n">log_2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">log_2</span><span class="p">))</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">usize</span><span class="p">;</span>
+<span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="n">log_p</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">log_2</span><span class="p">).</span><span class="n">ceil</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u32</span><span class="p">;</span>
+<span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="n">bits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="err">!</span><span class="o">[</span><span class="n">0; (size as f64 / 128.0).ceil() as usize</span><span class="o">]</span><span class="p">;</span>
+<span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="n">set_bits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">Filter</span><span class="w"> </span><span class="err">{</span>
+<span class="w">        </span><span class="k">size</span><span class="p">,</span>
+<span class="w">        </span><span class="n">d</span><span class="p">,</span>
+<span class="w">        </span><span class="n">bits</span><span class="p">,</span>
+<span class="w">        </span><span class="n">set_bits</span><span class="p">,</span>
+<span class="w">    </span><span class="err">}</span>
+<span class="err">}</span>
+
+<span class="n">pub</span><span class="w"> </span><span class="n">fn</span><span class="w"> </span><span class="k">add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mut</span><span class="w"> </span><span class="n">self</span><span class="p">,</span><span class="w"> </span><span class="k">data</span><span class="err">:</span><span class="w"> </span><span class="o">&amp;[</span><span class="n">u8</span><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="p">(</span><span class="n">h1</span><span class="p">,</span><span class="w"> </span><span class="n">h2</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nl">Self</span><span class="p">:</span><span class="err">:</span><span class="n">hash</span><span class="p">(</span><span class="k">data</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="mf">0.</span><span class="p">.</span><span class="n">self</span><span class="p">.</span><span class="n">d</span><span class="w"> </span><span class="err">{</span>
+<span class="w">        </span><span class="n">let</span><span class="w"> </span><span class="nc">bit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">h1</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u128</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">h2</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u128</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u128</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">usize</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="k">size</span><span class="p">;</span>
+<span class="w">        </span><span class="n">self</span><span class="p">.</span><span class="n">set_bits</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="n">bits</span><span class="o">[</span><span class="n">bit / 128</span><span class="o">]</span><span class="p">.</span><span class="n">count_ones</span><span class="p">();</span>
+<span class="w">        </span><span class="n">self</span><span class="p">.</span><span class="n">bits</span><span class="o">[</span><span class="n">bit / 128</span><span class="o">]</span><span class="w"> </span><span class="o">|=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="nc">bit</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">128</span><span class="p">);</span>
+<span class="w">        </span><span class="n">self</span><span class="p">.</span><span class="n">set_bits</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="n">bits</span><span class="o">[</span><span class="n">bit / 128</span><span class="o">]</span><span class="p">.</span><span class="n">count_ones</span><span class="p">();</span>
+<span class="w">    </span><span class="err">}</span>
+<span class="err">}</span>
+
+<span class="n">pub</span><span class="w"> </span><span class="n">fn</span><span class="w"> </span><span class="k">contains</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mut</span><span class="w"> </span><span class="n">self</span><span class="p">,</span><span class="w"> </span><span class="k">data</span><span class="err">:</span><span class="w"> </span><span class="o">&amp;[</span><span class="n">u8</span><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">bool</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="p">(</span><span class="n">h1</span><span class="p">,</span><span class="w"> </span><span class="n">h2</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nl">Self</span><span class="p">:</span><span class="err">:</span><span class="n">hash</span><span class="p">(</span><span class="k">data</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="mf">0.</span><span class="p">.</span><span class="n">self</span><span class="p">.</span><span class="n">d</span><span class="w"> </span><span class="err">{</span>
+<span class="w">        </span><span class="n">let</span><span class="w"> </span><span class="nc">bit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">h1</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u128</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">h2</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u128</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u128</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">usize</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="k">size</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="n">bits</span><span class="o">[</span><span class="n">bit / 128</span><span class="o">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="nc">bit</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">128</span><span class="p">))</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="err">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="k">false</span><span class="p">;</span>
+<span class="w">        </span><span class="err">}</span>
+<span class="w">    </span><span class="err">}</span>
+<span class="w">    </span><span class="k">true</span>
+<span class="err">}</span>
+
+<span class="n">pub</span><span class="w"> </span><span class="n">fn</span><span class="w"> </span><span class="n">estimated_size</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">usize</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="k">size</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">f64</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="n">d</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">f64</span><span class="p">)</span>
+<span class="w">        </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="n">f64</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="n">set_bits</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">f64</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="k">size</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">f64</span><span class="p">).</span><span class="k">ln</span><span class="p">())</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">usize</span>
+<span class="err">}</span>
+
+<span class="n">fn</span><span class="w"> </span><span class="n">hash</span><span class="p">(</span><span class="k">data</span><span class="err">:</span><span class="w"> </span><span class="o">&amp;[</span><span class="n">u8</span><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="p">(</span><span class="n">u64</span><span class="p">,</span><span class="w"> </span><span class="n">u64</span><span class="p">)</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nl">fastmurmur3</span><span class="p">:</span><span class="err">:</span><span class="n">hash</span><span class="p">(</span><span class="k">data</span><span class="p">);</span>
+<span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="nl">mask</span><span class="p">:</span><span class="w"> </span><span class="n">u128</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">64</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="p">((</span><span class="n">h</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">mask</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u64</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">h</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">64</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">u64</span><span class="p">)</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<p>}
+Memory Footprint 
+A great property of those Filters is that their memory footprint is fixed, independent of how many elements we store. What degrades is the false positive rate, until it reaches one. What degrades is the false positive rate, until it reaches one.</p>
+<p>The space efficiency is amazing, for instance, 1 Billion elements, with a false positive rate of 0.01% can be stored in just over 18mb.</p>
+<p>The Solution 
+Here is the final solution to this problem. The Sieve struct now accepts a parameter indicating the expected number of elements that are enqueued. Once we surpass this threshold, the filter performance starts to deteriorate.</p>
+<p>use log::warn;</p>
+<p>pub struct Sieve {
+    filter: Filter,
+    urls: VecDeque<String>,
+    expected_size: usize,
+}</p>
+<p>impl Sieve {
+    pub fn new(expected_urls_num: usize) -&gt; Sieve {
+        Sieve {
+            filter: Filter::new(expected_urls_num, 0.01),
+            urls: VecDeque::new(),
+            expected_size: expected_urls_num,
+        }
+    }</p>
+<div class="highlight"><pre><span></span><code><span class="nt">pub</span><span class="w"> </span><span class="nt">fn</span><span class="w"> </span><span class="nt">push</span><span class="o">(&amp;</span><span class="nt">mut</span><span class="w"> </span><span class="nt">self</span><span class="o">,</span><span class="w"> </span><span class="nt">url</span><span class="o">:</span><span class="w"> </span><span class="nt">String</span><span class="o">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="err">let</span><span class="w"> </span><span class="err">url_bytes</span><span class="w"> </span><span class="err">=</span><span class="w"> </span><span class="err">url.as_bytes()</span><span class="p">;</span>
+
+<span class="w">    </span><span class="err">if</span><span class="w"> </span><span class="err">self.filter.contains(url_bytes)</span><span class="w"> </span><span class="err">{</span>
+<span class="w">        </span><span class="err">return</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nt">self</span><span class="p">.</span><span class="nc">filter</span><span class="p">.</span><span class="nc">add</span><span class="o">(</span><span class="nt">url_bytes</span><span class="o">);</span>
+<span class="w">    </span><span class="nt">self</span><span class="p">.</span><span class="nc">urls</span><span class="p">.</span><span class="nc">push_back</span><span class="o">(</span><span class="nt">url</span><span class="o">);</span>
+
+<span class="w">    </span><span class="nt">let</span><span class="w"> </span><span class="nt">filter_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nt">self</span><span class="p">.</span><span class="nc">filter</span><span class="p">.</span><span class="nc">estimated_size</span><span class="o">();</span>
+<span class="w">    </span><span class="nt">if</span><span class="w"> </span><span class="nt">filter_size</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nt">self</span><span class="p">.</span><span class="nc">expected_size</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="err">warn!(</span>
+<span class="w">            </span><span class="err">&quot;Filter</span><span class="w"> </span><span class="err">size</span><span class="w"> </span><span class="err">({</span><span class="p">}</span><span class="o">)</span><span class="w"> </span><span class="nt">exceeds</span><span class="w"> </span><span class="nt">Sieve</span><span class="w"> </span><span class="nt">expected</span><span class="w"> </span><span class="nt">size</span><span class="w"> </span><span class="o">(</span><span class="p">{}</span><span class="o">)</span><span class="err">&quot;</span><span class="o">,</span>
+<span class="w">            </span><span class="nt">filter_size</span><span class="o">,</span><span class="w"> </span><span class="nt">self</span><span class="p">.</span><span class="nc">expected_size</span>
+<span class="w">        </span><span class="o">);</span>
+<span class="w">    </span><span class="err">}</span>
+<span class="err">}</span>
+
+<span class="nt">pub</span><span class="w"> </span><span class="nt">fn</span><span class="w"> </span><span class="nt">pop</span><span class="o">(&amp;</span><span class="nt">mut</span><span class="w"> </span><span class="nt">self</span><span class="o">)</span><span class="w"> </span><span class="nt">-</span><span class="o">&gt;</span><span class="w"> </span><span class="nt">Option</span><span class="o">&lt;</span><span class="nt">String</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="err">self.urls.pop_front()</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>}
+Thank you for reading this far, feel free to get in touch for suggestions or clarifications! Have a nice day 😃</p>
     <footer>
       <p>Published: <time datetime="2024-07-02T00:00:00+02:00">
         Tue 02 July 2024
       </time></p>
         <address>
-          By             <a href="/author/your-name.html">Your Name</a>
+          By             <a href="/author/jack.html">Jack</a>
         </address>
         <p>
-          Category: <a href="/category/category.html">category</a>
+          Category: <a href="/category/article.html">article</a>
         </p>
     </footer>
   </article>
