@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="{% block html_lang %}{{ DEFAULT_LANG }}{% endblock html_lang %}">
+  <head>
+    {% block head %}
+
+      <title>{% block title %}{{ SITENAME|striptags }}{% endblock title %}</title>
+
+      {% include 'partials/sub_head.html' %}
+
+    {% endblock head %}
+  </head>
+
+  {% set theme = 'auto' %}
+  {% if THEME_SETTING and THEME_SETTING.theme %}
+    {% set theme = THEME_SETTING.theme %}
+  {% endif %}
+
+  <body class="{{ theme }}">
+    {% block body %}
+
+      {% include 'partials/header.html' %}
+
+      <main>
+        {% block content %}
+        {% endblock content %}
+      </main>
+
+      {% include 'partials/footer.html' %}
+
+
+      {# Conditionally include math support #}
+      {% if USE_MATH %}
+        {% include "partials/math.html" %}
+      {% endif %}
+
+      {% block tail %}
+        <script src="{{ SITEURL }}/theme/js/mermaid.js"></script>
+        <script src="{{ SITEURL }}/theme/js/theme-switch.js"></script>
+        <script src="{{ SITEURL }}/theme/js/copy-code.js"></script>
+      {% endblock tail %}
+
+    {% endblock body %}
+  </body>
+</html>
