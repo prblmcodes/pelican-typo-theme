@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="container py-8">
+  <div class="mx-auto max-w-3xl">
+
+    {# PageHeader Title #}
+    <h1 class="text-4xl font-bold mb-6">{{ article.title }}</h1>
+
+    {# Optional Featured Image #}
+    {% if article.metadata.image_url %}
+      <div class="mb-8 overflow-hidden rounded-lg">
+        <img
+          src="{{ SITEURL }}{{ article.metadata.image_url }}"
+          alt="{{ article.metadata.image_alt or article.title }}"
+          class="object-cover w-full h-64 md:h-96"
+          loading="lazy">
+      </div>
+    {% endif %}
+
+    <div class="mb-8">
+      {% if article.date or article.author %}
+        <div class="flex flex-wrap items-center mb-4 text-sm text-gray-600">
+          {% if article.date %}
+            <span class="mr-4 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {{ article.date.strftime('%B %d, %Y') }}
+            </span>
+          {% endif %}
+
+          {% if article.author %}
+            <span class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              {{ article.author }}
+            </span>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# Tags #}
+      {% if article.tags %}
+        <div class="flex flex-wrap gap-2 mb-4">
+          {% for tag in article.tags %}
+            <span class="px-3 py-1 text-xs font-medium text-primary-700 bg-primary-100 rounded-full">
+              {{ tag }}
+            </span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <article class="prose prose-lg max-w-none prose-headings:text-gray-900 prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-primary-600 hover:prose-a:text-primary-700">
+      {{ article.content }}
+    </article>
+
+  </div>
+</main>
+{% endblock %}

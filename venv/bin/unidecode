@@ -1,4 +1,4 @@
-#!/home/mhmd1/Documents/typo_for_pelican/venv/bin/python
+#!/home/mhmd1/Documents/pelican/typo_for_pelican/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

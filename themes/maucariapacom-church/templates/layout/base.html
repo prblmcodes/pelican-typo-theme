@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="{% block html_lang %}{{ DEFAULT_LANG }}{% endblock html_lang %}">
+  <head>
+    {% block head %}
+
+      <title>{% block title %}{{ SITENAME|striptags }}{% endblock title %}</title>
+
+      {% include 'partials/sub_head.html' %}
+
+    {% endblock head %}
+  </head>
+
+  {% set theme = 'auto' %}
+  {% if THEME_SETTING and THEME_SETTING.theme %}
+    {% set theme = THEME_SETTING.theme %}
+  {% endif %}
+
+  <body>
+    {% block body %}
+
+      <div class="flex flex-col min-h-screen">
+        {% include 'partials/header.html' %}
+
+        <main class="flex-grow">
+            {% block content %}{% endblock %}
+        </main>
+
+        {% include 'partials/footer.html' %}
+      </div>
+
+    {% endblock body %}
+  </body>
+</html>
